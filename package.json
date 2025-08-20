@@ -1,0 +1,33 @@
+{
+  "name": "ccp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "6.4.1",
+    "axios": "^1.8.2",
+    "express": "^4.21.2",
+    "next": "15.2.2",
+    "next-auth": "^4.24.11",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.10.0",
+    "papaparse": "^5.5.2",
+    "prisma": "^6.4.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.2",
+    "tailwindcss": "^4"
+  }
+}
