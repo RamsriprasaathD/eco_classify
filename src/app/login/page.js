@@ -17,7 +17,7 @@ export default function LoginPage() {
         if (sessionData?.user) {
           setSession(sessionData);
           if (sessionData.user.isInstitutional) {
-            router.push("/usr");
+            router.push("/org");
           } else {
             router.push("/home");
           }
@@ -36,7 +36,7 @@ export default function LoginPage() {
   };
 
   const handleInstitutionalSignIn = () => {
-    signIn("google", { callbackUrl: "/usr" });
+    signIn("google", { callbackUrl: "/org" });
   };
 
   if (loading) {

@@ -475,9 +475,12 @@ const CalendarEventForm = () => {
     );
   }
 
-  if (status === "unauthenticated") {
-    router.push("/");
-  }
+  // Avoid updating router during render — redirect inside useEffect
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
 
   const handleSignOut = () => {
     signOut();
@@ -539,6 +542,41 @@ const CalendarEventForm = () => {
         </h1>
       </div>
 
+      {/* Quick action cards for institutional users */}
+      <div className="max-w-6xl mx-auto mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700 h-full flex flex-col">
+            <div className="flex items-center mb-3">
+              <div className="bg-emerald-800 p-2 rounded mr-3">
+                <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M12 3v4m6 10v4M6 14v4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold">Smart Bin Monitoring</h3>
+            </div>
+            <p className="text-gray-400 flex-1">Monitor smart bins across locations with real-time overflow alerts, fill levels and timestamps. Access the full monitoring dashboard.</p>
+            <div className="mt-4">
+              <a href="/monitoring" className="inline-flex items-center justify-center bg-gradient-to-r from-emerald-700 to-emerald-600 text-white px-4 py-2 rounded-md hover:from-emerald-600 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">Open Monitoring</a>
+            </div>
+          </div>
+
+          <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700 h-full flex flex-col">
+            <div className="flex items-center mb-3">
+              <div className="bg-emerald-800 p-2 rounded mr-3">
+                <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17a4 4 0 100-8 4 4 0 000 8zm8-4a8 8 0 11-16 0 8 8 0 0116 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold">Predictive Monitoring</h3>
+            </div>
+            <p className="text-gray-400 flex-1">Use CSV-based predictive models to estimate bin fill-times and optimize collection schedules. Upload datasets and view prediction results.</p>
+            <div className="mt-4">
+              <a href="/predictive-monitoring" className="inline-flex items-center justify-center bg-gradient-to-r from-emerald-700 to-emerald-600 text-white px-4 py-2 rounded-md hover:from-emerald-600 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">Open Predictive</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-100px)]">
         <div className="xl:col-span-4 xl:order-1 order-1 overflow-auto">
           <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 mb-6">
@@ -574,6 +612,49 @@ const CalendarEventForm = () => {
                   >
                     {generatingDate ? "Finding..." : "Find Date"}
                   </button>
+                </div>
+
+                {/* Place bulk CSV upload and quick-access monitoring cards in the left column */}
+                <div className="space-y-6">
+                  <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-4 text-purple-400">
+                      Bulk CSV Upload (Quick Access)
+                    </h2>
+                    <p className="text-sm text-gray-400 mb-4">Upload a CSV with waste items to process them in bulk. This duplicates the functionality but presents it as a single-click card for institutional users.</p>
+                    <div className="flex">
+                      <a href="/org/bulk-upload" className="inline-flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">Open Bulk Upload</a>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
+                    <div className="flex items-center mb-3">
+                      <div className="bg-emerald-800 p-2 rounded mr-3">
+                        <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M12 3v4m6 10v4M6 14v4" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold">Smart Bin Monitoring</h3>
+                    </div>
+                    <p className="text-sm text-gray-400 mb-4">Open the smart bin dashboard to monitor fill levels, receive overflow alerts and see live events for your institution.</p>
+                    <div>
+                      <a href="/monitoring" className="inline-flex items-center justify-center bg-emerald-700 text-white px-4 py-2 rounded hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500">Open Monitoring</a>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
+                    <div className="flex items-center mb-3">
+                      <div className="bg-emerald-800 p-2 rounded mr-3">
+                        <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17a4 4 0 100-8 4 4 0 000 8zm8-4a8 8 0 11-16 0 8 8 0 0116 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold">Predictive Monitoring</h3>
+                    </div>
+                    <p className="text-sm text-gray-400 mb-4">Upload CSV data and run predictive models to estimate peak fill-times and optimize collection schedules for institutional bins.</p>
+                    <div>
+                      <a href="/predictive-monitoring/upload" className="inline-flex items-center justify-center bg-emerald-700 text-white px-4 py-2 rounded hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500">Open Predictive</a>
+                    </div>
+                  </div>
                 </div>
               </div>
 
