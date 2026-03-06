@@ -1,90 +1,106 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth';
+import { NextResponse } from "next/server";
+import prisma from "../../lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../auth";
 
-const prisma = new PrismaClient();
+/* ---------------- FETCH EVENTS ---------------- */
 
-export async function GET(request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
-
-    if (!email || email !== session.user.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const events = await prisma.event.findMany({
-      where: { email },
-      orderBy: { date: 'asc' },
+      where: { email: session.user.email },
+      orderBy: { date: "asc" },
     });
 
-    return NextResponse.json({ events }, { status: 200 });
+    return NextResponse.json({ events });
+
   } catch (error) {
-    console.error('Error fetching events:', error);
-    return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to fetch events" },
+      { status: 500 }
+    );
   }
 }
+
+/* ---------------- CREATE EVENT ---------------- */
 
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { title, date, email } = await request.json();
-    if (!title || !date || !email || email !== session.user.email) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    const { title, date } = await request.json();
+
+    if (!title || !date) {
+      return NextResponse.json(
+        { error: "Invalid request" },
+        { status: 400 }
+      );
     }
 
     const event = await prisma.event.create({
-      data: { title, date: new Date(date), email },
+      data: {
+        title,
+        date: new Date(date),
+        email: session.user.email,
+      },
     });
 
-    return NextResponse.json({ event }, { status: 201 });
+    return NextResponse.json({ event });
+
   } catch (error) {
-    console.error('Error creating event:', error);
-    return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to create event" },
+      { status: 500 }
+    );
   }
 }
+
+/* ---------------- DELETE EVENT ---------------- */
 
 export async function DELETE(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id, email } = await request.json();
-    if (!id || !email || email !== session.user.email) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-    }
+    const { id } = await request.json();
 
     const event = await prisma.event.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: Number(id) },
     });
 
-    if (!event || event.email !== email) {
-      return NextResponse.json({ error: "Event not found or unauthorized" }, { status: 403 });
+    if (!event || event.email !== session.user.email) {
+      return NextResponse.json(
+        { error: "Not allowed" },
+        { status: 403 }
+      );
     }
 
-    await prisma.event.delete({ where: { id: parseInt(id) } });
+    await prisma.event.delete({
+      where: { id: Number(id) },
+    });
 
-    return NextResponse.json({ message: 'Event deleted successfully' }, { status: 200 });
+    return NextResponse.json({ success: true });
+
   } catch (error) {
-    console.error('Error deleting event:', error);
-    return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error(error);
+    return NextResponse.json(
+      { error: "Delete failed" },
+      { status: 500 }
+    );
   }
 }

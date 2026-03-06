@@ -164,7 +164,7 @@ const Home = () => {
                 </li>
               </ul>
               <div className="mt-auto flex justify-center">
-                <Link href="/org" className="relative inline-flex items-center justify-center bg-gradient-to-r from-emerald-700 to-emerald-600 text-white px-6 py-3 rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-500 transition-all duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                <Link href="/usr/disposal" className="relative inline-flex items-center justify-center bg-gradient-to-r from-emerald-700 to-emerald-600 text-white px-6 py-3 rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-500 transition-all duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                   <span className="relative z-10">Manage Schedule</span>
                   <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300" aria-hidden="true"></span>
                 </Link>

@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 
-const BulkWasteUpload = () => {
+const BulkWasteUpload = ({ onProcessed }) => {
   const { data: session, status } = useSession();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState([]);
@@ -78,16 +78,26 @@ const BulkWasteUpload = () => {
         method: "POST",
         body: formData,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to process waste items");
+
+      const text = await response.text();
+      let data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          console.error('Non-JSON response from /api/bulkProcessWaste:', text);
+          throw new Error(text || 'Server error while processing CSV');
+        }
       }
-      
-      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || text || 'Failed to process waste items');
+      }
       setResults(data.results);
       setShowResults(true);
       setMessage(`Successfully processed ${data.results.length} waste items!`);
+      // trigger calendar refresh in parent
+      if (onProcessed) onProcessed();
       
       // If there are any errors, highlight them
       const errors = data.results.filter(item => item.error);
@@ -103,9 +113,6 @@ const BulkWasteUpload = () => {
     }
   };
 
-  const handleBackToCalendar = () => {
-    router.push("/calendar");
-  };
 
   const downloadSampleCSV = () => {
     const sampleData = Papa.unparse({
@@ -150,15 +157,6 @@ const BulkWasteUpload = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-purple-400">
             Bulk Waste Processing
           </h1>
-          <button
-            onClick={handleBackToCalendar}
-            className="flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-gray-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            Back to Calendar
-          </button>
         </div>
 
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 mb-6">
@@ -347,13 +345,7 @@ const BulkWasteUpload = () => {
               </table>
             </div>
             
-            <div className="mt-6 flex justify-between">
-              <button
-                onClick={handleBackToCalendar}
-                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-              >
-                Go to Calendar
-              </button>
+            <div className="mt-6 flex justify-end">
               <button
                 onClick={() => {
                   setResults([]);

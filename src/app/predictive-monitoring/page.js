@@ -17,11 +17,6 @@ export default function MonitoringPage() {
               </div>
             </div>
             <div className="flex items-center">
-              <Link href="/">
-                <button className="px-3 py-1 rounded-md text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-600">
-                  Home
-                </button>
-              </Link>
             </div>
           </div>
         </div>

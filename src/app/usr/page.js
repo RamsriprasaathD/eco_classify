@@ -22,6 +22,12 @@ const CalendarEventForm = () => {
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvImportSuccess, setCsvImportSuccess] = useState(null);
   const [previewData, setPreviewData] = useState([]);
+  // Quick Disposal (single item) states
+  const [wasteName, setWasteName] = useState("");
+  const [date, setDate] = useState("");
+  const [wasteImage, setWasteImage] = useState(null);
+  const [generatingDate, setGeneratingDate] = useState(false);
+  const [isDateGenerated, setIsDateGenerated] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     if (status !== "authenticated" || !session?.user?.email) return;
@@ -31,11 +37,20 @@ const CalendarEventForm = () => {
       const response = await fetch(
         `/api/markDate?email=${encodeURIComponent(session.user.email)}`
       );
-      if (!response.ok) {
-        throw new Error("Failed to fetch events");
+      const text = await response.text();
+      let data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          console.error('Non-JSON response from /api/markDate:', text);
+          throw new Error(text || 'Failed to fetch events');
+        }
       }
-      const data = await response.json();
-      setEvents(data.events);
+      if (!response.ok) {
+        throw new Error(data?.error || text || 'Failed to fetch events');
+      }
+      setEvents(data?.events || []);
     } catch (error) {
       console.error("Error fetching events:", error);
       setMessage("Failed to load events. Please try again.");
@@ -83,6 +98,10 @@ const CalendarEventForm = () => {
     });
   };
 
+  const handleImageUpload = (e) => {
+    if (e.target.files && e.target.files[0]) setWasteImage(e.target.files[0]);
+  };
+
   const handleProcessCsv = async () => {
     if (!csvFile) {
       setMessage("Please select a CSV file to upload.");
@@ -107,17 +126,21 @@ const CalendarEventForm = () => {
         body: formData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to process CSV file");
+      const text = await response.text();
+      let data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          console.error('Non-JSON response from /api/processCSV:', text);
+          throw new Error(text || 'Failed to process CSV file');
+        }
       }
-
-      const data = await response.json();
-      setCsvResults(data.results);
-      setCsvImportSuccess({
-        success: data.success,
-        errors: data.errors,
-      });
+      if (!response.ok) {
+        throw new Error(data?.error || text || 'Failed to process CSV file');
+      }
+      setCsvResults(data?.results || []);
+      setCsvImportSuccess({ success: data?.success, errors: data?.errors });
       setShowCsvModal(true);
     } catch (error) {
       console.error("Error processing CSV:", error);
@@ -127,6 +150,40 @@ const CalendarEventForm = () => {
     } finally {
       setProcessingCsv(false);
     }
+  };
+
+  const handleGenerateDate = async () => {
+    if (!wasteName && !wasteImage) { setMessage('Please enter a waste name or upload an image.'); return; }
+    setGeneratingDate(true); setMessage('');
+    try {
+      const formData = new FormData();
+      if (wasteName) formData.append('wasteName', wasteName);
+      if (wasteImage) formData.append('wasteImage', wasteImage);
+      const res = await fetch('/api/generateDate', { method: 'POST', body: formData });
+      let data;
+      try { data = await res.json(); } catch (e) { const t = await res.text(); console.error('Non-JSON response from /api/generateDate:', t); throw new Error(t || 'Failed to generate date'); }
+      if (!res.ok) throw new Error(data?.error || 'Failed to generate date');
+      if (data.disposalDate) {
+        setDate(data.disposalDate);
+        const dObj = new Date(data.disposalDate);
+        setSelectedDate(dObj);
+        setCurrentMonth(new Date(dObj.getFullYear(), dObj.getMonth(), 1));
+        setIsDateGenerated(true);
+        setMessage('Disposal date generated!');
+      }
+    } catch (err) { console.error(err); setMessage('Failed to generate date.'); } finally { setGeneratingDate(false); }
+  };
+
+  const handleQuickSubmit = async (e) => {
+    e.preventDefault();
+    if (!wasteName || !date) { setMessage('Please provide both a waste name and date.'); return; }
+    setLoading(true); setMessage('');
+    try {
+      const res = await fetch('/api/markDate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: wasteName, date, email: session.user.email }) });
+      if (!res.ok) throw new Error('Failed to add event');
+      setWasteName(''); setWasteImage(null); setDate(formatDateForInput(new Date())); setIsDateGenerated(false);
+      fetchEvents(); setMessage('Disposal event added successfully!');
+    } catch (err) { console.error(err); setMessage('Failed to add event.'); } finally { setLoading(false); }
   };
 
   const handleUpdateCsvDate = (index, newDate) => {
@@ -214,9 +271,14 @@ const CalendarEventForm = () => {
         }),
       });
 
+      let deleteData;
+      const deleteText = await response.text();
+      let deleteData = null;
+      if (deleteText) {
+        try { deleteData = JSON.parse(deleteText); } catch (err) { /* ignore parse */ }
+      }
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete event");
+        throw new Error(deleteData?.error || deleteText || 'Failed to delete event');
       }
 
       fetchEvents();
@@ -664,10 +726,65 @@ const CalendarEventForm = () => {
         </div>
       </nav>
 
-      <div className="flex justify-between items-center mb-6 mt-16">
-        <h1 className="text-2xl sm:text-3xl font-bold text-purple-400">
-          Waste Disposal Calendar
-        </h1>
+      <div className="mt-16">
+        <div className="text-center py-12">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">Welcome to <span className="text-emerald-400">EcoClassify</span></h1>
+          <p className="text-gray-400 max-w-3xl mx-auto">The comprehensive waste management solution designed to help you classify items, schedule disposals, and manage timely reminders — all in one place.</p>
+        </div>
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 px-4 pb-8">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-lg">
+            <div className="flex items-center mb-4">
+              <div className="bg-emerald-800 p-3 rounded-md mr-4">
+                <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7h18M5 7v10a2 2 0 002 2h10a2 2 0 002-2V7M8 7V5a4 4 0 118 0v2"/></svg>
+              </div>
+              <h2 className="text-xl font-semibold text-white">Waste Classification</h2>
+            </div>
+            <p className="text-gray-400 mb-6">Utilize our AI-powered system to accurately classify waste materials and determine optimal disposal methods, reducing environmental impact.</p>
+            <ul className="text-gray-400 mb-6 space-y-2">
+              <li>Image recognition technology</li>
+              <li>Material composition analysis</li>
+              <li>Disposal recommendations</li>
+            </ul>
+            <div>
+              <button onClick={() => router.push('/predictive-monitoring')} className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-500">Start Classification</button>
+            </div>
+          </div>
+
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-lg">
+            <div className="flex items-center mb-4">
+              <div className="bg-emerald-800 p-3 rounded-md mr-4">
+                <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V11H3v8a2 2 0 002 2z"/></svg>
+              </div>
+              <h2 className="text-xl font-semibold text-white">Disposal Schedule</h2>
+            </div>
+            <p className="text-gray-400 mb-6">Streamline your disposal tasks with an intelligent scheduling system that optimizes reminders and ensures timely actions.</p>
+            <ul className="text-gray-400 mb-6 space-y-2">
+              <li>Automated reminder system</li>
+              <li>Collection route suggestions</li>
+              <li>Personal schedule tracking</li>
+            </ul>
+            <div>
+              <div className="flex gap-3">
+                <button onClick={() => router.push('/usr/disposal')} className="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-400">Quick Disposal</button>
+                <button onClick={() => router.push('/usr')} className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-500">Manage Schedule</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-lg md:col-span-2">
+            <div className="flex items-center mb-4">
+              <div className="bg-emerald-800 p-3 rounded-md mr-4">
+                <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2zM5 20h14"/></svg>
+              </div>
+              <h2 className="text-xl font-semibold text-white">Smart Bin Monitoring</h2>
+            </div>
+            <p className="text-gray-400 mb-4">View live bin status, overflows, and alerts across your locations to act proactively.</p>
+            <div>
+              <button onClick={() => router.push('/monitoring')} className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-500">Open Monitoring</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-120px)]">
@@ -799,6 +916,41 @@ const CalendarEventForm = () => {
                 {message}
               </div>
             )}
+          </div>
+
+          {/* Quick Disposal single-item form */}
+          <div id="quick-disposal" className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 text-purple-400">Quick Disposal</h2>
+            <form onSubmit={handleQuickSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Waste Item Name</label>
+                <input type="text" value={wasteName} onChange={(e) => setWasteName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Mobile Charger" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Or Upload Photo</label>
+                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-700 rounded-xl cursor-pointer bg-gray-900 hover:bg-gray-800 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-3 pb-3">
+                    <svg className="w-6 h-6 mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V8a4 4 0 018 0v8"/></svg>
+                    <p className="text-xs text-gray-400">{wasteImage ? wasteImage.name : 'Click to identify waste'}</p>
+                  </div>
+                  <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                </label>
+              </div>
+
+              <div className="flex space-x-2">
+                <button type="button" onClick={handleGenerateDate} disabled={generatingDate || (!wasteName && !wasteImage)} className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-500 disabled:opacity-50">{generatingDate ? '...' : 'AI Date'}</button>
+                {isDateGenerated && (
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white" />
+                )}
+              </div>
+
+              {isDateGenerated && (
+                <div>
+                  <button type="submit" className="w-full mt-2 bg-emerald-600 text-white py-2 rounded-lg font-bold">Confirm Schedule</button>
+                </div>
+              )}
+            </form>
           </div>
 
           {selectedDate && (
